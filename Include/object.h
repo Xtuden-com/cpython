@@ -128,16 +128,11 @@ static inline Py_ssize_t _Py_REFCNT(const PyObject *ob) {
 #define Py_REFCNT(ob) _Py_REFCNT(_PyObject_CAST_CONST(ob))
 
 
-static inline Py_ssize_t _Py_SIZE(const PyVarObject *ob) {
-    return ob->ob_size;
-}
-#define Py_SIZE(ob) _Py_SIZE(_PyVarObject_CAST_CONST(ob))
+// bpo-39573: The Py_SET_TYPE() function must be used to set an object type.
+#define Py_TYPE(ob)             (_PyObject_CAST(ob)->ob_type)
 
-
-static inline PyTypeObject* _Py_TYPE(const PyObject *ob) {
-    return ob->ob_type;
-}
-#define Py_TYPE(ob) _Py_TYPE(_PyObject_CAST_CONST(ob))
+// bpo-39573: The Py_SET_SIZE() function must be used to set an object size.
+#define Py_SIZE(ob)             (_PyVarObject_CAST(ob)->ob_size)
 
 
 static inline int _Py_IS_TYPE(const PyObject *ob, const PyTypeObject *type) {
@@ -240,8 +235,11 @@ PyAPI_FUNC(void *) PyType_GetModuleState(struct _typeobject *);
 
 /* Generic type check */
 PyAPI_FUNC(int) PyType_IsSubtype(PyTypeObject *, PyTypeObject *);
-#define PyObject_TypeCheck(ob, tp) \
-    (Py_IS_TYPE(ob, tp) || PyType_IsSubtype(Py_TYPE(ob), (tp)))
+
+static inline int _PyObject_TypeCheck(PyObject *ob, PyTypeObject *type) {
+    return Py_IS_TYPE(ob, type) || PyType_IsSubtype(Py_TYPE(ob), type);
+}
+#define PyObject_TypeCheck(ob, type) _PyObject_TypeCheck(_PyObject_CAST(ob), type)
 
 PyAPI_DATA(PyTypeObject) PyType_Type; /* built-in 'type' */
 PyAPI_DATA(PyTypeObject) PyBaseObject_Type; /* built-in 'object' */
@@ -361,6 +359,11 @@ given type object has a specified feature.
 #define Py_TPFLAGS_HAVE_AM_SEND (1UL << 21)
 #endif
 
+// This undocumented flag gives certain built-ins their unique pattern-matching
+// behavior, which allows a single positional subpattern to match against the
+// subject itself (rather than a mapped attribute on it):
+#define _Py_TPFLAGS_MATCH_SELF (1UL << 22)
+
 /* These flags are used to determine if a type is a subclass. */
 #define Py_TPFLAGS_LONG_SUBCLASS        (1UL << 24)
 #define Py_TPFLAGS_LIST_SUBCLASS        (1UL << 25)
@@ -431,7 +434,6 @@ static inline void _Py_INCREF(PyObject *op)
 #endif
     op->ob_refcnt++;
 }
-
 #define Py_INCREF(op) _Py_INCREF(_PyObject_CAST(op))
 
 static inline void _Py_DECREF(
@@ -454,7 +456,6 @@ static inline void _Py_DECREF(
         _Py_Dealloc(op);
     }
 }
-
 #ifdef Py_REF_DEBUG
 #  define Py_DECREF(op) _Py_DECREF(__FILE__, __LINE__, _PyObject_CAST(op))
 #else
@@ -553,8 +554,8 @@ static inline PyObject* _Py_XNewRef(PyObject *obj)
 // Py_NewRef() and Py_XNewRef() are exported as functions for the stable ABI.
 // Names overriden with macros by static inline functions for best
 // performances.
-#define Py_NewRef(obj) _Py_NewRef(obj)
-#define Py_XNewRef(obj) _Py_XNewRef(obj)
+#define Py_NewRef(obj) _Py_NewRef(_PyObject_CAST(obj))
+#define Py_XNewRef(obj) _Py_XNewRef(_PyObject_CAST(obj))
 
 
 /*

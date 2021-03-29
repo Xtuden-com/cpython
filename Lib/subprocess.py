@@ -5,7 +5,6 @@
 # Copyright (c) 2003-2005 by Peter Astrand <astrand@lysator.liu.se>
 #
 # Licensed to PSF under a Contributor Agreement.
-# See http://www.python.org/2.4/license for licensing details.
 
 r"""Subprocesses with accessible I/O streams
 
@@ -54,14 +53,6 @@ import contextlib
 from time import monotonic as _time
 import types
 
-try:
-    import pwd
-except ImportError:
-    pwd = None
-try:
-    import grp
-except ImportError:
-    grp = None
 try:
     import fcntl
 except ImportError:
@@ -420,7 +411,11 @@ def check_output(*popenargs, timeout=None, **kwargs):
     if 'input' in kwargs and kwargs['input'] is None:
         # Explicitly passing input=None was previously equivalent to passing an
         # empty string. That is maintained here for backwards compatibility.
-        kwargs['input'] = '' if kwargs.get('universal_newlines', False) else b''
+        if kwargs.get('universal_newlines') or kwargs.get('text'):
+            empty = ''
+        else:
+            empty = b''
+        kwargs['input'] = empty
 
     return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
                **kwargs).stdout
@@ -872,7 +867,9 @@ class Popen(object):
                                  "current platform")
 
             elif isinstance(group, str):
-                if grp is None:
+                try:
+                    import grp
+                except ImportError:
                     raise ValueError("The group parameter cannot be a string "
                                      "on systems without the grp module")
 
@@ -898,7 +895,9 @@ class Popen(object):
             gids = []
             for extra_group in extra_groups:
                 if isinstance(extra_group, str):
-                    if grp is None:
+                    try:
+                        import grp
+                    except ImportError:
                         raise ValueError("Items in extra_groups cannot be "
                                          "strings on systems without the "
                                          "grp module")
@@ -924,10 +923,11 @@ class Popen(object):
                                  "the current platform")
 
             elif isinstance(user, str):
-                if pwd is None:
+                try:
+                    import pwd
+                except ImportError:
                     raise ValueError("The user parameter cannot be a string "
                                      "on systems without the pwd module")
-
                 uid = pwd.getpwnam(user).pw_uid
             elif isinstance(user, int):
                 uid = user
@@ -1532,10 +1532,8 @@ class Popen(object):
                 self.stderr.close()
 
             # All data exchanged.  Translate lists into strings.
-            if stdout is not None:
-                stdout = stdout[0]
-            if stderr is not None:
-                stderr = stderr[0]
+            stdout = stdout[0] if stdout else None
+            stderr = stderr[0] if stderr else None
 
             return (stdout, stderr)
 
@@ -2078,7 +2076,11 @@ class Popen(object):
             # The race condition can still happen if the race condition
             # described above happens between the returncode test
             # and the kill() call.
-            os.kill(self.pid, sig)
+            try:
+                os.kill(self.pid, sig)
+            except ProcessLookupError:
+                # Supress the race condition error; bpo-40550.
+                pass
 
         def terminate(self):
             """Terminate the process with SIGTERM

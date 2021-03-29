@@ -35,12 +35,13 @@ PyAPI_FUNC(Py_ssize_t) _Py_GetRefTotal(void);
    _PyObject_{Get,Set,Has}AttrId are __getattr__ versions using _Py_Identifier*.
 */
 typedef struct _Py_Identifier {
-    struct _Py_Identifier *next;
     const char* string;
-    PyObject *object;
+    // Index in PyInterpreterState.unicode.ids.array. It is process-wide
+    // unique and must be initialized to -1.
+    Py_ssize_t index;
 } _Py_Identifier;
 
-#define _Py_static_string_init(value) { .next = NULL, .string = value, .object = NULL }
+#define _Py_static_string_init(value) { .string = value, .index = -1 }
 #define _Py_static_string(varname, value)  static _Py_Identifier varname = _Py_static_string_init(value)
 #define _Py_IDENTIFIER(varname) _Py_static_string(PyId_##varname, #varname)
 
@@ -516,6 +517,8 @@ struct _ts;
 /* Python 3.9 private API, invoked by the macros below. */
 PyAPI_FUNC(int) _PyTrash_begin(struct _ts *tstate, PyObject *op);
 PyAPI_FUNC(void) _PyTrash_end(struct _ts *tstate);
+/* Python 3.10 private API, invoked by the Py_TRASHCAN_BEGIN(). */
+PyAPI_FUNC(int) _PyTrash_cond(PyObject *op, destructor dealloc);
 
 #define PyTrash_UNWIND_LEVEL 50
 
@@ -525,7 +528,7 @@ PyAPI_FUNC(void) _PyTrash_end(struct _ts *tstate);
         /* If "cond" is false, then _tstate remains NULL and the deallocator \
          * is run normally without involving the trashcan */ \
         if (cond) { \
-            _tstate = PyThreadState_GET(); \
+            _tstate = PyThreadState_Get(); \
             if (_PyTrash_begin(_tstate, _PyObject_CAST(op))) { \
                 break; \
             } \
@@ -539,7 +542,7 @@ PyAPI_FUNC(void) _PyTrash_end(struct _ts *tstate);
 
 #define Py_TRASHCAN_BEGIN(op, dealloc) \
     Py_TRASHCAN_BEGIN_CONDITION(op, \
-        Py_TYPE(op)->tp_dealloc == (destructor)(dealloc))
+        _PyTrash_cond(_PyObject_CAST(op), (destructor)dealloc))
 
 /* For backwards compatibility, these macros enable the trashcan
  * unconditionally */
