@@ -32,7 +32,7 @@ Notes on the availability of these functions:
   objects, and result in an object of the same type, if a path or file name is
   returned.
 
-* On VxWorks, os.fork, os.execv and os.spawn*p* are not supported.
+* On VxWorks, os.popen, os.fork, os.execv and os.spawn*p* are not supported.
 
 .. note::
 
@@ -1090,6 +1090,16 @@ or `the MSDN <https://msdn.microsoft.com/en-us/library/z0kc8e3z.aspx>`_ on Windo
 
    The above constants are only available on Windows.
 
+.. data:: O_EVTONLY
+          O_FSYNC
+          O_SYMLINK
+          O_NOFOLLOW_ANY
+
+   The above constants are only available on macOS.
+
+   .. versionchanged:: 3.10
+      Add :data:`O_EVTONLY`, :data:`O_FSYNC`, :data:`O_SYMLINK`
+      and :data:`O_NOFOLLOW_ANY` constants.
 
 .. data:: O_ASYNC
           O_DIRECT
@@ -1323,12 +1333,12 @@ or `the MSDN <https://msdn.microsoft.com/en-us/library/z0kc8e3z.aspx>`_ on Windo
 
 .. data:: RWF_APPEND
 
-    Provide a per-write equivalent of the :data:`O_APPEND` :func:`os.open`
-    flag. This flag is meaningful only for :func:`os.pwritev`, and its
-    effect applies only to the data range written by the system call. The
-    *offset* argument does not affect the write operation; the data is always
-    appended to the end of the file. However, if the *offset* argument is
-    ``-1``, the current file *offset* is updated.
+   Provide a per-write equivalent of the :data:`O_APPEND` :func:`os.open`
+   flag. This flag is meaningful only for :func:`os.pwritev`, and its
+   effect applies only to the data range written by the system call. The
+   *offset* argument does not affect the write operation; the data is always
+   appended to the end of the file. However, if the *offset* argument is
+   ``-1``, the current file *offset* is updated.
 
    .. availability:: Linux 4.16 and newer.
 
@@ -1418,6 +1428,39 @@ or `the MSDN <https://msdn.microsoft.com/en-us/library/z0kc8e3z.aspx>`_ on Windo
 
    .. versionadded:: 3.3
 
+
+.. function:: splice(src, dst, count, offset_src=None, offset_dst=None)
+
+   Transfer *count* bytes from file descriptor *src*, starting from offset
+   *offset_src*, to file descriptor *dst*, starting from offset *offset_dst*.
+   At least one of the file descriptors must refer to a pipe. If *offset_src*
+   is None, then *src* is read from the current position; respectively for
+   *offset_dst*. The offset associated to the file descriptor that refers to a
+   pipe must be ``None``. The files pointed by *src* and *dst* must reside in
+   the same filesystem, otherwise an :exc:`OSError` is raised with
+   :attr:`~OSError.errno` set to :data:`errno.EXDEV`.
+
+   This copy is done without the additional cost of transferring data
+   from the kernel to user space and then back into the kernel. Additionally,
+   some filesystems could implement extra optimizations. The copy is done as if
+   both files are opened as binary.
+
+   Upon successful completion, returns the number of bytes spliced to or from
+   the pipe. A return value of 0 means end of input. If *src* refers to a
+   pipe, then this means that there was no data to transfer, and it would not
+   make sense to block because there are no writers connected to the write end
+   of the pipe.
+
+   .. availability:: Linux kernel >= 2.6.17 and glibc >= 2.5
+
+   .. versionadded:: 3.10
+
+
+.. data:: SPLICE_F_MOVE
+          SPLICE_F_NONBLOCK
+          SPLICE_F_MORE
+
+   .. versionadded:: 3.10
 
 .. function:: readv(fd, buffers)
 
@@ -1958,7 +2001,7 @@ features:
       Accepts a :term:`path-like object`.
 
 
-.. function:: lstat(path, \*, dir_fd=None)
+.. function:: lstat(path, *, dir_fd=None)
 
    Perform the equivalent of an :c:func:`lstat` system call on the given path.
    Similar to :func:`~os.stat`, but does not follow symbolic links. Return a
@@ -2465,7 +2508,7 @@ features:
       On the first, uncached call, a system call is required on Windows but
       not on Unix.
 
-   .. method:: is_dir(\*, follow_symlinks=True)
+   .. method:: is_dir(*, follow_symlinks=True)
 
       Return ``True`` if this entry is a directory or a symbolic link pointing
       to a directory; return ``False`` if the entry is or points to any other
@@ -2489,7 +2532,7 @@ features:
       This method can raise :exc:`OSError`, such as :exc:`PermissionError`,
       but :exc:`FileNotFoundError` is caught and not raised.
 
-   .. method:: is_file(\*, follow_symlinks=True)
+   .. method:: is_file(*, follow_symlinks=True)
 
       Return ``True`` if this entry is a file or a symbolic link pointing to a
       file; return ``False`` if the entry is or points to a directory or other
@@ -2519,7 +2562,7 @@ features:
       This method can raise :exc:`OSError`, such as :exc:`PermissionError`,
       but :exc:`FileNotFoundError` is caught and not raised.
 
-   .. method:: stat(\*, follow_symlinks=True)
+   .. method:: stat(*, follow_symlinks=True)
 
       Return a :class:`stat_result` object for this entry. This method
       follows symbolic links by default; to stat a symbolic link add the
@@ -2551,7 +2594,7 @@ features:
       for :class:`bytes` paths on Windows.
 
 
-.. function:: stat(path, \*, dir_fd=None, follow_symlinks=True)
+.. function:: stat(path, *, dir_fd=None, follow_symlinks=True)
 
    Get the status of a file or a file descriptor. Perform the equivalent of a
    :c:func:`stat` system call on the given path. *path* may be specified as

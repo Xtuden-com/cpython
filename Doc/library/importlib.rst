@@ -208,7 +208,7 @@ Functions
    .. versionadded:: 3.4
    .. versionchanged:: 3.7
        :exc:`ModuleNotFoundError` is raised when the module being reloaded lacks
-       a :class:`ModuleSpec`.
+       a :class:`~importlib.machinery.ModuleSpec`.
 
 
 :mod:`importlib.abc` -- Abstract base classes related to import
@@ -1138,7 +1138,7 @@ find and load modules.
       directory for ``''`` (i.e. the empty string).
 
 
-.. class:: FileFinder(path, \*loader_details)
+.. class:: FileFinder(path, *loader_details)
 
    A concrete implementation of :class:`importlib.abc.PathEntryFinder` which
    caches results from the file system.
@@ -1181,7 +1181,7 @@ find and load modules.
 
       Clear out the internal cache.
 
-   .. classmethod:: path_hook(\*loader_details)
+   .. classmethod:: path_hook(*loader_details)
 
       A class method which returns a closure for use on :attr:`sys.path_hooks`.
       An instance of :class:`FileFinder` is returned by the closure using the
@@ -1476,7 +1476,7 @@ an :term:`importer`.
 
    If  **name** has no leading dots, then **name** is simply returned. This
    allows for usage such as
-   ``importlib.util.resolve_name('sys', __package__)`` without doing a
+   ``importlib.util.resolve_name('sys', __spec__.parent)`` without doing a
    check to see if the **package** argument is needed.
 
    :exc:`ImportError` is raised if **name** is a relative module name but
@@ -1591,9 +1591,9 @@ an :term:`importer`.
 
 .. function:: spec_from_loader(name, loader, *, origin=None, is_package=None)
 
-   A factory function for creating a :class:`ModuleSpec` instance based
-   on a loader.  The parameters have the same meaning as they do for
-   ModuleSpec.  The function uses available :term:`loader` APIs, such as
+   A factory function for creating a :class:`~importlib.machinery.ModuleSpec`
+   instance based on a loader.  The parameters have the same meaning as they do
+   for ModuleSpec.  The function uses available :term:`loader` APIs, such as
    :meth:`InspectLoader.is_package`, to fill in any missing
    information on the spec.
 
@@ -1601,9 +1601,9 @@ an :term:`importer`.
 
 .. function:: spec_from_file_location(name, location, *, loader=None, submodule_search_locations=None)
 
-   A factory function for creating a :class:`ModuleSpec` instance based
-   on the path to a file.  Missing information will be filled in on the
-   spec by making use of loader APIs and by the implication that the
+   A factory function for creating a :class:`~importlib.machinery.ModuleSpec`
+   instance based on the path to a file.  Missing information will be filled in
+   on the spec by making use of loader APIs and by the implication that the
    module will be file-based.
 
    .. versionadded:: 3.4
